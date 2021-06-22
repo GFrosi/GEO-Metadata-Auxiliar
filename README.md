@@ -1,4 +1,4 @@
-# GEO-Metadata-Auxiliar
+# GEO-Metadata-Auxiliary
 
 ## Scripts to create new columns (histones count and corresponding inputs per IP samples) using the GEO-METADATA dataframe.
 
