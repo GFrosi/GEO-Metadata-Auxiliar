@@ -13,7 +13,6 @@ including the input samples as a class.
 
 - To tun this script:
 ```python main_gse_hist.py <dataframe.csv> <path_to_output_file>```
-```
 
 ### word_dist_GEO.py
 
