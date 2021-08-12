@@ -94,11 +94,10 @@ def create_col(df_gse_histones_interest, new_dict):
 
 def main():
 
-    df_geo = pd.read_csv(args.df) #df with ngs and chip atlas 
+    df_geo = pd.read_csv(args.df, keep_default_na=False) #df with ngs and chip atlas 
     df_gses_filtered = filter_input_h3k(df_geo)
-    # df_gses_filtered.to_csv(args.path, index=False)
+    df_gses_filtered.to_csv(args.path, index=False)
     df_gse_histones_interest = get_hist_interest(df_gses_filtered)
-
     new_dict = set_values(df_gse_histones_interest)
     df_hist_nb_class = create_col(df_gse_histones_interest, new_dict)
     df_hist_nb_class.to_csv(args.PATH, index=False) 
