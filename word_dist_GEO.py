@@ -1,4 +1,3 @@
-from os import set_inheritable
 import editdistance
 import sys
 import pandas as pd
@@ -9,43 +8,43 @@ from time import sleep
 
 
 def csv_open(csv_file):
-    '''receives a csv file 
+    '''receives a csv file
     and returns a df'''
 
-    df = pd.read_csv(csv_file)
-
-    return df
+    return pd.read_csv(csv_file, sep='\t')
 
 
 def get_GSE_info(df):
     '''receives a df and 
-    returns a list of unique 
+    returns a list of unique
     GSEs (series)'''
-
-    GSE_list = list(dict.fromkeys(df['GSE'].tolist()))
     
-    return GSE_list
+    return list(dict.fromkeys(df['GSE_GEO'].tolist()))
 
 
-def create_list_dfs(df, GSE_list):
-    '''receives a df and a list of GSEs 
+def create_list_dfs(df):
+    '''receives a df and a list of GSEs
     and returns a list of dfs'''
+
+    GSE_list = get_GSE_info(df)
 
     list_dfs = []
 
     for gse in GSE_list:
-        sub_df = df[df['GSE'].str.match(gse)]
+        sub_df = df[df['GSE_GEO'].str.match(gse)]
         list_dfs.append(sub_df)
      
     return list_dfs
 
 
-def list_input_IP(list_dfs):
+def list_input_IP(df):
     '''receives a list of df and returns 
-    two lists of lists of tuples containing 
-    the GSM and GSM title for each input and IP 
-    samples per series (each sublist is related 
-    with a GSE)'''
+    two lists of lists of tuples containing
+    the GSM and GSM title for each 
+    input and IP samples per series
+    (each sublist is related with a GSE)'''
+
+    list_dfs = create_list_dfs(df)
 
     big_list_input = []
     big_list_IP = []
@@ -53,14 +52,13 @@ def list_input_IP(list_dfs):
     for df in list_dfs:
         local_input = []
         local_IP = []
-        
         for index, row in df.iterrows():
             try:
-                if 'INPUT' in row['Target-GEO']: 
-                    local_input.append((row['GSM'],row['GSM_title'],row['GSE']))
+                if 'input' in row['Target-GEO_stand'].lower(): 
+                    local_input.append((row['GSM'],row['GSM_title'],row['GSE_GEO']))
             
                 else:
-                    local_IP.append((row['GSM'],row['GSM_title'],row['GSE']))
+                    local_IP.append((row['GSM'],row['GSM_title'],row['GSE_GEO']))
         
             except:
                 print("An exception occurred. Check the GSEs")
@@ -100,19 +98,24 @@ def checking_similarity_gse(big_list_input, big_list_IP):
     result_ip_minus_input = ip - input 
 
     if len(result_input_minus_ip) != 0 or len(result_ip_minus_input) != 0:
-        list1 = list(result_input_minus_ip)
-        list2 = list(result_ip_minus_input)
+        # list1 = list(result_input_minus_ip)
+        # list2 = list(result_ip_minus_input)
 
-        print(f'GSE(s) specific(s) for Input samples:{result_input_minus_ip}')
+        print(f'GSE(s) specific(s) for Input samples:{len(list(result_input_minus_ip))}')
         print()
-        print('\n'.join(list1))
-        print()
-        print(f'GSE(s) specific(s) for IP samples:{result_ip_minus_input}')
-        print()
-        print('\n'.join(list2))
-        print()
-        print('You should remove those GSEs and re-run the script')
 
+        with open('gse_just_inputs.txt', 'w') as f:
+            f.write('\n'.join(list(result_input_minus_ip)))
+        print()
+        print(f'GSE(s) specific(s) for IP samples:{len(list(result_ip_minus_input))}')
+        print()
+
+        with open('gse_just_IP.txt', 'w') as fi:
+            fi.write('\n'.join(list(result_ip_minus_input)))
+        
+        print()
+        print('You should remove those GSEs and re-run the script. Check GSE files.')
+        
         sys.exit(1)
 
     else:
@@ -121,18 +124,16 @@ def checking_similarity_gse(big_list_input, big_list_IP):
 
 def create_big_data(big_list_IP):
     '''receives a lists of lists 
-    of tuples and returns a list 
+    of tuples and returns a list
     of IPs per series'''
 
     big_data = []
 
     for ip in big_list_IP:
         data = []
-        
         for gsm in ip: #tuples
             word_ip = gsm[1]
             data.append(word_ip)
-
         big_data.append(data)
         
     return big_data
@@ -145,7 +146,6 @@ def count_dist(big_list_input, big_data):
     for input, ip in zip(big_list_input,big_data):
         for inp in input:
             name_inp = inp[1]
-
             for record in ip:
                 dist = editdistance.eval(record, name_inp)
                 
@@ -159,8 +159,8 @@ def count_dist(big_list_input, big_data):
 
 
 def sort_tuple(list_tup):
-    '''Receives a list of tuples 
-    with Input and min value, and 
+    '''Receives a list of tuples
+    with Input and min value, and
     returns a list of corresponding
     input(s)'''
 
@@ -177,27 +177,26 @@ def sort_tuple(list_tup):
     
 
 def filter_min(dict_dist):
-    '''receives a dict of distances 
-    (key: IP sample; value: list of tuples),
-    and returns a filtered list of tuples with 
-    the corresponding inputs per IP samples'''
+    '''receives a dict of 
+    distances (key: IP sample;
+    value: list of tuples), and
+    returns a filtered list of 
+    tuples with the corresponding
+    inputs per IP samples'''
 
     filtered_list_of_tup = [] 
 
     for k,v in dict_dist.items():
         min_list_gsm = sort_tuple(v)
         new_k = k.split('$')[0]
-
         min_list_gsm.append(new_k)
-
         filtered_list_of_tup.append(min_list_gsm)
 
     return filtered_list_of_tup
 
 
 def create_col(df, filtered_list_of_tup):
-    '''receives a df and a list of lists, 
-    and returns a list with corresponding 
+    '''receives a df and a list of lists, and returns a list with corresponding 
     inputs per IP to be added into a new column'''
 
     list_final = ['NA'] *len(df)
@@ -217,18 +216,15 @@ def create_col(df, filtered_list_of_tup):
 
 
 def add_count_corres_input(list_final):
-    '''Receives a list of corresponding 
-    inputs per sample and return a list of 
+    '''Receives a list of corresponding inputs per sample and return a list of 
     counts per sample'''
 
     list_count = []
 
     for ele in list_final:
-
         if ele == 'NA':
             result = 0
             list_count.append(result)
-        
         else:
             count = ele.split(',')
             result = len(count)
@@ -238,11 +234,9 @@ def add_count_corres_input(list_final):
 
 
 def add_col(df, list_final, list_count):
-    '''receives a df and a list and return 
-    a df with a new column'''
+    '''receives a df and a list and return a df with a new column'''
 
     df1 = df.copy()
-
     df1['Corresponding_Input'] = list_final
     df1['Corresponding_Input_Count'] = list_count
 
@@ -251,11 +245,9 @@ def add_col(df, list_final, list_count):
 
 def main():
 
-    df = csv_open(sys.argv[1])
-    path = sys.argv[2]
-    GSE_list = get_GSE_info(df)
-    list_dfs = create_list_dfs(df, GSE_list)
-    big_list_input, big_list_IP = list_input_IP(list_dfs)
+    df = csv_open(sys.argv[1]) #GEO-Dataframe tsv
+    path = sys.argv[2] #Output file
+    big_list_input, big_list_IP = list_input_IP(df)
     checking_similarity_gse(big_list_input,big_list_IP)
     big_data = create_big_data(big_list_IP)
     dict_dist = count_dist(big_list_input,big_data)
@@ -263,7 +255,7 @@ def main():
     list_final = create_col(df, filtered_list_of_tup)
     list_count = add_count_corres_input(list_final)
     df_final = add_col(df, list_final, list_count)
-    df_final.to_csv(path)
+    df_final.to_csv(path, sep='\t', index=False)
 
 
 if __name__ == "__main__":
