@@ -4,7 +4,7 @@ import argparse
 
 
 def filter_input_h3k(df):
-    '''receives a df. Returns
+    '''Receives a df. Returns
     a df with GSEs which contains 
     input and histones (H3k) samples'''
 
