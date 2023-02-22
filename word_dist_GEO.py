@@ -5,7 +5,7 @@ from pprint import pprint
 from tqdm import tqdm
 from time import sleep
 
-
+#Edit distance
 
 def csv_open(csv_file):
     '''receives a csv file
